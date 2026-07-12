@@ -1,11 +1,18 @@
+export interface Workspace {
+  id: string
+  name: string
+}
+
 export interface Client {
   id: string
+  workspace_id: string
   name: string
   created_at: string
 }
 
 export interface Link {
   id: string
+  workspace_id: string
   client_id: string
   short_code: string
   label: string | null

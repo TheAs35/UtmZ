@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -50,6 +50,9 @@ export default function Login() {
         <button className="btn btn-primary" disabled={loading}>
           {loading ? 'Entrando…' : 'Entrar'}
         </button>
+        <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+          Não tem conta? <Link to="/cadastro">Criar conta grátis</Link>
+        </p>
       </form>
     </div>
   )

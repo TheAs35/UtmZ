@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { slugify, formatUtm, shortLinkUrl } from '../lib/format'
+import { useWorkspace } from '../lib/workspace'
 import type { Client } from '../lib/types'
 
 export default function NewLink() {
+  const workspace = useWorkspace()
   const [clients, setClients] = useState<Client[]>([])
   const [searchParams] = useSearchParams()
   const [clientId, setClientId] = useState(searchParams.get('cliente') ?? '')
@@ -56,6 +58,7 @@ export default function NewLink() {
     }
     setSaving(true)
     const { error: insError } = await supabase.from('links').insert({
+      workspace_id: workspace.id,
       client_id: clientId,
       short_code: code,
       label: label.trim() || null,

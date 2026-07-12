@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useWorkspace } from '../lib/workspace'
 
 interface ClientRow {
   id: string
@@ -9,6 +10,7 @@ interface ClientRow {
 }
 
 export default function Dashboard() {
+  const workspace = useWorkspace()
   const [clients, setClients] = useState<ClientRow[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -35,7 +37,9 @@ export default function Dashboard() {
     const name = newName.trim()
     if (!name) return
     setSaving(true)
-    const { error: insError } = await supabase.from('clients').insert({ name })
+    const { error: insError } = await supabase
+      .from('clients')
+      .insert({ name, workspace_id: workspace.id })
     setSaving(false)
     if (insError) {
       setError(insError.message)
