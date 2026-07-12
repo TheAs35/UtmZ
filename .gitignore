@@ -7,3 +7,6 @@ dist
 .omc
 .claude/settings.local.json
 .playwright-mcp
+
+.vercel
+.env*
