@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/l/:code", "destination": "/api/l/:code" },
+    { "source": "/((?!api/|l/|assets/).*)", "destination": "/index.html" }
+  ]
+}
