@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { shortLinkUrl, formatDate } from '../lib/format'
-import type { Client, Link, Click } from '../lib/types'
+import { shortLinkUrl } from '../lib/format'
+import {
+  breakdown,
+  clicksByDay,
+  effectiveUtm,
+  filterClicks,
+  type Period,
+} from '../lib/stats'
+import { StatTile, TimelineChart, BreakdownCard } from '../components/Charts'
+import { CLICK_FIELDS, type Client, type Link, type Click } from '../lib/types'
+
+const DEVICE_LABEL: Record<string, string> = {
+  mobile: 'celular',
+  desktop: 'computador',
+  tablet: 'tablet',
+}
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>()
@@ -10,29 +24,31 @@ export default function ClientDetail() {
   const [links, setLinks] = useState<Link[]>([])
   const [clicks, setClicks] = useState<Click[]>([])
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [period, setPeriod] = useState<Period>(30)
+  const [includeBots, setIncludeBots] = useState(false)
 
   useEffect(() => {
     if (!id) return
     async function load() {
       setLoading(true)
+      const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
       const [clientRes, linksRes] = await Promise.all([
         supabase.from('clients').select('*').eq('id', id).single(),
         supabase.from('links').select('*').eq('client_id', id).order('created_at'),
       ])
-      const clientData = clientRes.data as Client | null
       const linkData = (linksRes.data as Link[]) ?? []
-      setClient(clientData)
+      setClient(clientRes.data as Client | null)
       setLinks(linkData)
       if (linkData.length > 0) {
         const { data: clickData } = await supabase
           .from('clicks')
-          .select('link_id, clicked_at, country, device, referrer')
+          .select(CLICK_FIELDS)
           .in('link_id', linkData.map((l) => l.id))
+          .gte('clicked_at', since)
           .order('clicked_at', { ascending: false })
           .limit(10000)
-        setClicks((clickData as Click[]) ?? [])
+        setClicks((clickData as unknown as Click[]) ?? [])
       } else {
         setClicks([])
       }
@@ -41,15 +57,18 @@ export default function ClientDetail() {
     load()
   }, [id])
 
-  const clicksByLink = useMemo(() => {
-    const map = new Map<string, Click[]>()
-    for (const click of clicks) {
-      const list = map.get(click.link_id) ?? []
-      list.push(click)
-      map.set(click.link_id, list)
-    }
+  const linksById = useMemo(() => new Map(links.map((l) => [l.id, l])), [links])
+
+  const visible = useMemo(
+    () => filterClicks(clicks, period, includeBots),
+    [clicks, period, includeBots],
+  )
+
+  const byLink = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const click of visible) map.set(click.link_id, (map.get(click.link_id) ?? 0) + 1)
     return map
-  }, [clicks])
+  }, [visible])
 
   function copyLink(code: string) {
     navigator.clipboard.writeText(shortLinkUrl(code))
@@ -59,6 +78,8 @@ export default function ClientDetail() {
 
   if (loading) return <p className="muted">Carregando…</p>
   if (!client) return <p className="error">Cliente não encontrado.</p>
+
+  const botCount = filterClicks(clicks, period, true).length - filterClicks(clicks, period, false).length
 
   return (
     <>
@@ -72,104 +93,78 @@ export default function ClientDetail() {
         </RouterLink>
       </div>
 
-      <p className="muted">
-        Total: <strong>{clicks.length}</strong> cliques em <strong>{links.length}</strong> links
-      </p>
+      <div className="filter-row">
+        {([7, 30, 90] as Period[]).map((p) => (
+          <button
+            key={p}
+            className={`chip ${period === p ? 'active' : ''}`}
+            onClick={() => setPeriod(p)}
+          >
+            {p} dias
+          </button>
+        ))}
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={includeBots}
+            onChange={(e) => setIncludeBots(e.target.checked)}
+          />
+          incluir bots/previews ({botCount})
+        </label>
+      </div>
 
+      <div className="kpi-row">
+        <StatTile label={`cliques em ${period} dias`} value={visible.length} />
+        <StatTile label="links" value={links.length} />
+        <StatTile
+          label="origem principal"
+          value={breakdown(visible, (c) => effectiveUtm(c, linksById, 'utm_source'), 1)[0]?.label ?? '—'}
+        />
+        <StatTile
+          label="campanha principal"
+          value={breakdown(visible, (c) => effectiveUtm(c, linksById, 'utm_campaign'), 1)[0]?.label ?? '—'}
+        />
+      </div>
+
+      <div className="card chart-card">
+        <h4>Cliques por dia</h4>
+        <TimelineChart data={clicksByDay(visible, period)} />
+      </div>
+
+      <div className="breakdown-grid">
+        <BreakdownCard title="Origem (utm_source)" rows={breakdown(visible, (c) => effectiveUtm(c, linksById, 'utm_source'))} />
+        <BreakdownCard title="Campanha" rows={breakdown(visible, (c) => effectiveUtm(c, linksById, 'utm_campaign'))} />
+        <BreakdownCard title="País" rows={breakdown(visible, (c) => c.country)} />
+        <BreakdownCard title="Cidade" rows={breakdown(visible, (c) => c.city)} />
+        <BreakdownCard title="Dispositivo" rows={breakdown(visible, (c) => (c.device ? DEVICE_LABEL[c.device] ?? c.device : null))} />
+        <BreakdownCard title="Navegador" rows={breakdown(visible, (c) => c.browser)} />
+      </div>
+
+      <h2>Links</h2>
       {links.length === 0 ? (
         <p className="muted">Nenhum link ainda.</p>
       ) : (
         <div className="link-list">
-          {links.map((link) => {
-            const linkClicks = clicksByLink.get(link.id) ?? []
-            const isOpen = expanded === link.id
-            return (
-              <div key={link.id} className="card link-card">
-                <div className="link-head">
-                  <div>
-                    <h3>{link.label || link.short_code}</h3>
-                    <code className="short-url">{shortLinkUrl(link.short_code)}</code>
-                  </div>
-                  <div className="link-actions">
-                    <span className="click-badge"><strong>{linkClicks.length}</strong> cliques</span>
-                    <button className="btn btn-ghost" onClick={() => copyLink(link.short_code)}>
-                      {copied === link.short_code ? 'Copiado ✔' : 'Copiar'}
-                    </button>
-                    <button
-                      className="btn btn-ghost"
-                      onClick={() => setExpanded(isOpen ? null : link.id)}
-                    >
-                      {isOpen ? 'Fechar' : 'Detalhes'}
-                    </button>
-                  </div>
+          {links.map((link) => (
+            <div key={link.id} className="card link-card">
+              <div className="link-head">
+                <div>
+                  <h3>{link.label || link.short_code}</h3>
+                  <code className="short-url">{shortLinkUrl(link.short_code)}</code>
                 </div>
-                {isOpen && <LinkStats link={link} clicks={linkClicks} />}
+                <div className="link-actions">
+                  <span className="click-badge">
+                    <strong>{byLink.get(link.id) ?? 0}</strong> cliques em {period} dias
+                  </span>
+                  <button className="btn btn-ghost" onClick={() => copyLink(link.short_code)}>
+                    {copied === link.short_code ? 'Copiado ✔' : 'Copiar'}
+                  </button>
+                </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </>
-  )
-}
-
-function countBy(clicks: Click[], key: (c: Click) => string): [string, number][] {
-  const map = new Map<string, number>()
-  for (const click of clicks) {
-    const k = key(click)
-    map.set(k, (map.get(k) ?? 0) + 1)
-  }
-  return [...map.entries()].sort((a, b) => b[1] - a[1])
-}
-
-function LinkStats({ link, clicks }: { link: Link; clicks: Click[] }) {
-  const byDay = countBy(clicks, (c) => formatDate(c.clicked_at)).slice(0, 14)
-  const byCountry = countBy(clicks, (c) => c.country || '—')
-  const byDevice = countBy(clicks, (c) => c.device || '—')
-
-  const utms = [
-    ['source', link.utm_source],
-    ['medium', link.utm_medium],
-    ['campaign', link.utm_campaign],
-    ['content', link.utm_content],
-    ['term', link.utm_term],
-  ].filter(([, v]) => v) as [string, string][]
-
-  return (
-    <div className="link-stats">
-      <p className="muted">
-        Destino: <code>{link.destination_url}</code>
-        {utms.length > 0 && (
-          <> · UTMs: {utms.map(([k, v]) => `${k}=${v}`).join(', ')}</>
-        )}
-      </p>
-      {clicks.length === 0 ? (
-        <p className="muted">Nenhum clique registrado ainda.</p>
-      ) : (
-        <div className="stats-grid">
-          <StatTable title="Por dia" rows={byDay} />
-          <StatTable title="Por país" rows={byCountry} />
-          <StatTable title="Por dispositivo" rows={byDevice} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StatTable({ title, rows }: { title: string; rows: [string, number][] }) {
-  return (
-    <div>
-      <h4>{title}</h4>
-      <table>
-        <tbody>
-          {rows.map(([label, count]) => (
-            <tr key={label}>
-              <td>{label}</td>
-              <td className="num">{count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   )
 }

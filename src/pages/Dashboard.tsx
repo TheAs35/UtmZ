@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useWorkspace } from '../lib/workspace'
+import { clicksByDay, countLastDays, filterClicks, type ClickTime } from '../lib/stats'
+import { StatTile, TimelineChart } from '../components/Charts'
 
 interface ClientRow {
   id: string
@@ -12,6 +14,7 @@ interface ClientRow {
 export default function Dashboard() {
   const workspace = useWorkspace()
   const [clients, setClients] = useState<ClientRow[]>([])
+  const [clicks, setClicks] = useState<ClickTime[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -19,12 +22,18 @@ export default function Dashboard() {
 
   async function load() {
     setLoading(true)
-    const { data, error: qError } = await supabase
-      .from('clients')
-      .select('id, name, links(id, clicks(count))')
-      .order('name')
-    if (qError) setError(qError.message)
-    setClients((data as ClientRow[]) ?? [])
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const [clientsRes, clicksRes] = await Promise.all([
+      supabase.from('clients').select('id, name, links(id, clicks(count))').order('name'),
+      supabase
+        .from('clicks')
+        .select('clicked_at, is_bot')
+        .gte('clicked_at', since)
+        .limit(10000),
+    ])
+    if (clientsRes.error) setError(clientsRes.error.message)
+    setClients((clientsRes.data as ClientRow[]) ?? [])
+    setClicks((clicksRes.data as ClickTime[]) ?? [])
     setLoading(false)
   }
 
@@ -72,6 +81,20 @@ export default function Dashboard() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {!loading && clients.length > 0 && (
+        <>
+          <div className="kpi-row">
+            <StatTile label="cliques nos últimos 7 dias" value={countLastDays(clicks, 7)} />
+            <StatTile label="cliques nos últimos 30 dias" value={countLastDays(clicks, 30)} />
+            <StatTile label="links ativos" value={clients.reduce((sum, c) => sum + c.links.length, 0)} />
+            <StatTile label="clientes" value={clients.length} />
+          </div>
+          <div className="card chart-card">
+            <h4>Cliques por dia — últimos 30 dias</h4>
+            <TimelineChart data={clicksByDay(filterClicks(clicks, 30, false), 30)} />
+          </div>
+        </>
+      )}
       {loading ? (
         <p className="muted">Carregando…</p>
       ) : clients.length === 0 ? (

@@ -29,6 +29,16 @@ export interface Click {
   link_id: string
   clicked_at: string
   country: string | null
+  region: string | null
+  city: string | null
   device: string | null
+  browser: string | null
+  os: string | null
+  is_bot: boolean | null
   referrer: string | null
+  query_params: Record<string, string> | null
 }
+
+/** Campos de clique buscados pelo painel (mantém o payload enxuto). */
+export const CLICK_FIELDS =
+  'link_id, clicked_at, country, region, city, device, browser, os, is_bot, referrer, query_params'
