@@ -82,7 +82,7 @@ export default function NewLink() {
   }
 
   if (createdCode) {
-    const url = shortLinkUrl(createdCode)
+    const url = shortLinkUrl(createdCode, clients.find((c) => c.id === clientId)?.domain)
     return (
       <div className="card success-card">
         <h1>Link criado ✔</h1>
@@ -181,7 +181,10 @@ export default function NewLink() {
           />
         </label>
         {effectiveCode && (
-          <p className="muted">Link final: <code>{shortLinkUrl(slugify(effectiveCode))}</code></p>
+          <p className="muted">
+            Link final:{' '}
+            <code>{shortLinkUrl(slugify(effectiveCode), clients.find((c) => c.id === clientId)?.domain)}</code>
+          </p>
         )}
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={saving || !clientId}>

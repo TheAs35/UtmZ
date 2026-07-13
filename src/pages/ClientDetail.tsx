@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { shortLinkUrl } from '../lib/format'
+import { normalizeDomain, shortLinkUrl } from '../lib/format'
 import {
   breakdown,
   clicksByDay,
@@ -28,6 +28,8 @@ export default function ClientDetail() {
   const [copied, setCopied] = useState<string | null>(null)
   const [period, setPeriod] = useState<Period>(30)
   const [includeBots, setIncludeBots] = useState(false)
+  const [domainInput, setDomainInput] = useState('')
+  const [domainMsg, setDomainMsg] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export default function ClientDetail() {
       ])
       const linkData = (linksRes.data as Link[]) ?? []
       setClient(clientRes.data as Client | null)
+      setDomainInput((clientRes.data as Client | null)?.domain ?? '')
       setLinks(linkData)
       if (linkData.length > 0) {
         const { data: clickData } = await supabase
@@ -73,9 +76,27 @@ export default function ClientDetail() {
   }, [visible])
 
   function copyLink(code: string) {
-    navigator.clipboard.writeText(shortLinkUrl(code))
+    navigator.clipboard.writeText(shortLinkUrl(code, client?.domain))
     setCopied(code)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  async function handleSaveDomain() {
+    if (!client) return
+    setDomainMsg(null)
+    const domain = domainInput.trim() ? normalizeDomain(domainInput) : null
+    if (domainInput.trim() && !domain) {
+      setDomainMsg('Domínio inválido. Use o formato go.cliente.com.br (sem https://).')
+      return
+    }
+    const { error } = await supabase.from('clients').update({ domain }).eq('id', client.id)
+    if (error) {
+      setDomainMsg(`Não foi possível salvar: ${error.message}`)
+      return
+    }
+    setClient({ ...client, domain })
+    setDomainInput(domain ?? '')
+    setDomainMsg(domain ? 'Domínio salvo! Siga os 2 passos abaixo p/ ativar.' : 'Voltou pro domínio padrão.')
   }
 
   async function handleDeleteClient() {
@@ -180,6 +201,35 @@ export default function ClientDetail() {
         <BreakdownCard title="Navegador" rows={breakdown(visible, (c) => c.browser)} />
       </div>
 
+      <div className="card chart-card">
+        <h4>Domínio dos links</h4>
+        <p className="muted" style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>
+          Use um subdomínio do cliente (ex: <code className="mono-cell">go.cliente.com.br</code>) no
+          lugar de {window.location.host}. Deixe vazio p/ usar o padrão.
+        </p>
+        <div className="inline-form" style={{ maxWidth: 480 }}>
+          <input
+            placeholder="go.cliente.com.br"
+            value={domainInput}
+            onChange={(e) => setDomainInput(e.target.value)}
+          />
+          <button className="btn btn-primary" onClick={handleSaveDomain}>Salvar</button>
+        </div>
+        {domainMsg && <p className="muted" style={{ marginTop: '0.5rem' }}>{domainMsg}</p>}
+        {client.domain && (
+          <ol className="muted" style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
+            <li>
+              No DNS do domínio, crie um CNAME de <code className="mono-cell">{client.domain}</code> →{' '}
+              <code className="mono-cell">cname.vercel-dns.com</code>
+            </li>
+            <li>
+              Adicione <code className="mono-cell">{client.domain}</code> no projeto da Vercel
+              (Settings → Domains) — os links passam a funcionar assim que o DNS propagar.
+            </li>
+          </ol>
+        )}
+      </div>
+
       <h2>Links</h2>
       {links.length === 0 ? (
         <p className="muted">Nenhum link ainda.</p>
@@ -190,7 +240,7 @@ export default function ClientDetail() {
               <div className="link-head">
                 <div>
                   <h3>{link.label || link.short_code}</h3>
-                  <code className="short-url">{shortLinkUrl(link.short_code)}</code>
+                  <code className="short-url">{shortLinkUrl(link.short_code, client.domain)}</code>
                 </div>
                 <div className="link-actions">
                   <span className="click-badge">

@@ -23,6 +23,7 @@ create table clients (
   id           uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references workspaces(id) on delete cascade,
   name         text not null,
+  domain       text,                         -- domínio próprio dos links (ex: go.cliente.com.br)
   created_at   timestamptz default now()
 );
 

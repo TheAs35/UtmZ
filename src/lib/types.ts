@@ -7,6 +7,7 @@ export interface Client {
   id: string
   workspace_id: string
   name: string
+  domain: string | null
   created_at: string
 }
 
