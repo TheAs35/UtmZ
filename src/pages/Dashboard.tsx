@@ -68,16 +68,18 @@ export default function Dashboard() {
     <>
       <div className="page-head">
         <h1>Clientes</h1>
-        <form className="inline-form" onSubmit={handleCreateClient}>
-          <input
-            placeholder="Nome do novo cliente"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <button className="btn btn-primary" disabled={saving}>
-            {saving ? 'Salvando…' : 'Adicionar'}
-          </button>
-        </form>
+        {!loading && clients.length > 0 && (
+          <form className="inline-form" onSubmit={handleCreateClient}>
+            <input
+              placeholder="Nome do novo cliente"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <button className="btn btn-primary" disabled={saving}>
+              {saving ? 'Salvando…' : 'Adicionar'}
+            </button>
+          </form>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -98,7 +100,38 @@ export default function Dashboard() {
       {loading ? (
         <p className="muted">Carregando…</p>
       ) : clients.length === 0 ? (
-        <p className="muted">Nenhum cliente ainda. Cadastre o primeiro acima.</p>
+        <div className="mx-auto mt-10 max-w-lg rounded-xl border border-border bg-card p-8">
+          <h2 className="text-lg font-bold">Bem-vindo ao UtmZ 👋</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Em três passos você começa a medir seu tráfego:
+          </p>
+          <ol className="mt-4 flex flex-col gap-3 text-sm">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">1</span>
+              <span><strong>Cadastre um cliente</strong> — a pasta que organiza os links dele.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">2</span>
+              <span><strong>Crie um link curto</strong> com as UTMs — é ele que você divulga no anúncio, bio ou WhatsApp.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">3</span>
+              <span><strong>Acompanhe os cliques aqui</strong> — e, se quiser ir além, instale o script em <em>Sites</em> p/ rastrear a landing page inteira.</span>
+            </li>
+          </ol>
+          <form className="mt-6 flex gap-2" onSubmit={handleCreateClient}>
+            <input
+              className="flex-1"
+              placeholder="Nome do primeiro cliente"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              autoFocus
+            />
+            <button className="btn btn-primary" disabled={saving}>
+              {saving ? 'Criando…' : 'Começar'}
+            </button>
+          </form>
+        </div>
       ) : (
         <div className="card-grid">
           {clients.map((client) => {

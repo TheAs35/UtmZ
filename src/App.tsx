@@ -25,8 +25,8 @@ function navClass({ isActive }: { isActive: boolean }) {
   return cn(
     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
     isActive
-      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground',
+      ? 'bg-primary/10 text-primary'
+      : 'text-sidebar-foreground/70 hover:bg-primary/5 hover:text-sidebar-foreground',
   )
 }
 
@@ -59,10 +59,20 @@ export default function App() {
       .select('workspace_id, workspaces(name)')
       .limit(1)
       .maybeSingle()
-      .then(({ data }) => {
-        const raw = data?.workspaces as unknown
+      .then(async ({ data }) => {
+        if (!data) {
+          // Sem workspace: se a conta não existe mais (token órfão), desloga.
+          const { error } = await supabase.auth.getUser()
+          if (error) {
+            await supabase.auth.signOut()
+            return
+          }
+          setWorkspace(null)
+          return
+        }
+        const raw = data.workspaces as unknown
         const ws = (Array.isArray(raw) ? raw[0] : raw) as { name?: string } | null | undefined
-        setWorkspace(data ? { id: data.workspace_id, name: ws?.name ?? 'Workspace' } : null)
+        setWorkspace({ id: data.workspace_id, name: ws?.name ?? 'Workspace' })
       })
   }, [userId])
 
@@ -159,7 +169,7 @@ export default function App() {
                   cn(
                     'rounded-md p-2 transition-colors',
                     isActive
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                      ? 'bg-primary/10 text-primary'
                       : 'text-sidebar-foreground/70 hover:text-sidebar-foreground',
                   )
                 }

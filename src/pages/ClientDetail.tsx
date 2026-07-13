@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { shortLinkUrl } from '../lib/format'
 import {
@@ -27,6 +28,7 @@ export default function ClientDetail() {
   const [copied, setCopied] = useState<string | null>(null)
   const [period, setPeriod] = useState<Period>(30)
   const [includeBots, setIncludeBots] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!id) return
@@ -76,6 +78,34 @@ export default function ClientDetail() {
     setTimeout(() => setCopied(null), 1500)
   }
 
+  async function handleDeleteClient() {
+    if (!client) return
+    const ok = window.confirm(
+      `Excluir o cliente "${client.name}"?\n\nTodos os links e cliques dele serão apagados. Essa ação não tem volta.`,
+    )
+    if (!ok) return
+    const { error } = await supabase.from('clients').delete().eq('id', client.id)
+    if (error) {
+      window.alert(`Não foi possível excluir: ${error.message}`)
+      return
+    }
+    navigate('/')
+  }
+
+  async function handleDeleteLink(linkId: string, label: string) {
+    const ok = window.confirm(
+      `Excluir o link "${label}"?\n\nO link curto para de funcionar e os cliques dele são apagados.`,
+    )
+    if (!ok) return
+    const { error } = await supabase.from('links').delete().eq('id', linkId)
+    if (error) {
+      window.alert(`Não foi possível excluir: ${error.message}`)
+      return
+    }
+    setLinks((prev) => prev.filter((l) => l.id !== linkId))
+    setClicks((prev) => prev.filter((c) => c.link_id !== linkId))
+  }
+
   if (loading) return <p className="muted">Carregando…</p>
   if (!client) return <p className="error">Cliente não encontrado.</p>
 
@@ -88,9 +118,19 @@ export default function ClientDetail() {
           <RouterLink to="/" className="muted back-link">← Clientes</RouterLink>
           <h1>{client.name}</h1>
         </div>
-        <RouterLink to={`/novo-link?cliente=${client.id}`} className="btn btn-primary">
-          + Novo link
-        </RouterLink>
+        <div className="flex flex-wrap items-center gap-2">
+          <RouterLink to={`/novo-link?cliente=${client.id}`} className="btn btn-primary">
+            + Novo link
+          </RouterLink>
+          <button
+            className="btn btn-ghost inline-flex items-center gap-1.5 hover:!border-destructive hover:!text-destructive"
+            onClick={handleDeleteClient}
+            title="Excluir cliente"
+          >
+            <Trash2 className="h-4 w-4" />
+            Excluir cliente
+          </button>
+        </div>
       </div>
 
       <div className="filter-row">
@@ -158,6 +198,13 @@ export default function ClientDetail() {
                   </span>
                   <button className="btn btn-ghost" onClick={() => copyLink(link.short_code)}>
                     {copied === link.short_code ? 'Copiado ✔' : 'Copiar'}
+                  </button>
+                  <button
+                    className="btn btn-ghost !px-2 hover:!border-destructive hover:!text-destructive"
+                    onClick={() => handleDeleteLink(link.id, link.label || link.short_code)}
+                    title="Excluir link"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>

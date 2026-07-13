@@ -3,41 +3,61 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 // Marcadores = onde os cliques dos links acontecem; Brasil em destaque.
-const GLOBE_CONFIG: COBEOptions = {
+const MARKERS: COBEOptions['markers'] = [
+  { location: [-23.5505, -46.6333], size: 0.12 }, // São Paulo
+  { location: [-22.9068, -43.1729], size: 0.09 }, // Rio de Janeiro
+  { location: [-15.7939, -47.8828], size: 0.06 }, // Brasília
+  { location: [-8.0476, -34.877], size: 0.06 },   // Recife
+  { location: [-30.0346, -51.2177], size: 0.05 }, // Porto Alegre
+  { location: [40.7128, -74.006], size: 0.08 },   // Nova York
+  { location: [38.7223, -9.1393], size: 0.06 },   // Lisboa
+  { location: [19.4326, -99.1332], size: 0.06 },  // Cidade do México
+  { location: [51.5074, -0.1278], size: 0.05 },   // Londres
+  { location: [35.6762, 139.6503], size: 0.04 },  // Tóquio
+]
+
+const BASE: Omit<COBEOptions, 'dark' | 'baseColor' | 'markerColor' | 'glowColor'> = {
   width: 800,
   height: 800,
   onRender: () => {},
   devicePixelRatio: 2,
   phi: 0,
   theta: 0.3,
-  dark: 1,
   diffuse: 0.4,
   mapSamples: 16000,
   mapBrightness: 1.2,
+  markers: MARKERS,
+}
+
+// Globo claro sobre fundo claro; navy sobre fundo escuro.
+const LIGHT_CONFIG: COBEOptions = {
+  ...BASE,
+  dark: 0,
+  baseColor: [1, 1, 1],
+  markerColor: [59 / 255, 130 / 255, 246 / 255],
+  glowColor: [0.92, 0.95, 1],
+}
+
+const DARK_CONFIG: COBEOptions = {
+  ...BASE,
+  dark: 1,
   baseColor: [0.23, 0.35, 0.6],
   markerColor: [96 / 255, 165 / 255, 250 / 255],
-  glowColor: [0.15, 0.3, 0.65],
-  markers: [
-    { location: [-23.5505, -46.6333], size: 0.12 }, // São Paulo
-    { location: [-22.9068, -43.1729], size: 0.09 }, // Rio de Janeiro
-    { location: [-15.7939, -47.8828], size: 0.06 }, // Brasília
-    { location: [-8.0476, -34.877], size: 0.06 },   // Recife
-    { location: [-30.0346, -51.2177], size: 0.05 }, // Porto Alegre
-    { location: [40.7128, -74.006], size: 0.08 },   // Nova York
-    { location: [38.7223, -9.1393], size: 0.06 },   // Lisboa
-    { location: [19.4326, -99.1332], size: 0.06 },  // Cidade do México
-    { location: [51.5074, -0.1278], size: 0.05 },   // Londres
-    { location: [35.6762, 139.6503], size: 0.04 },  // Tóquio
-  ],
+  glowColor: [0.12, 0.22, 0.5],
 }
 
 export function Globe({
   className,
-  config = GLOBE_CONFIG,
+  config,
 }: {
   className?: string
   config?: COBEOptions
 }) {
+  const resolvedConfig =
+    config ??
+    (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+      ? DARK_CONFIG
+      : LIGHT_CONFIG)
   const phiRef = useRef(0)
   const widthRef = useRef(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -78,7 +98,7 @@ export function Globe({
     onResize()
 
     const globe = createGlobe(canvasRef.current!, {
-      ...config,
+      ...resolvedConfig,
       width: widthRef.current * 2,
       height: widthRef.current * 2,
       onRender,
