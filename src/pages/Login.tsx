@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import AuthLayout from '@/components/AuthLayout'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -23,10 +24,18 @@ export default function Login() {
   }
 
   return (
-    <div className="center-screen">
-      <form className="card login-card" onSubmit={handleSubmit}>
-        <h1 className="brand">UtmZ</h1>
-        <p className="muted">Rastreador de links da agência</p>
+    <AuthLayout>
+      <div className="mb-8">
+        <span className="text-2xl font-extrabold tracking-tight text-foreground">
+          Utm<span className="text-primary">Z</span>
+        </span>
+        <h1 className="mt-6 text-xl font-bold text-foreground">Entrar</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Acesse seu painel de links e rastreamento.
+        </p>
+      </div>
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <label>
           E-mail
           <input
@@ -35,6 +44,7 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoFocus
+            autoComplete="email"
           />
         </label>
         <label>
@@ -44,16 +54,17 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button className="btn btn-primary" disabled={loading}>
+        <button className="btn btn-primary w-full" disabled={loading}>
           {loading ? 'Entrando…' : 'Entrar'}
         </button>
-        <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+        <p className="text-center text-sm text-muted-foreground">
           Não tem conta? <Link to="/cadastro">Criar conta grátis</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   )
 }

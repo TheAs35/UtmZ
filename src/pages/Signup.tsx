@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import AuthLayout from '@/components/AuthLayout'
 
 export default function Signup() {
   const [name, setName] = useState('')
@@ -40,10 +41,18 @@ export default function Signup() {
   }
 
   return (
-    <div className="center-screen">
-      <form className="card login-card" onSubmit={handleSubmit}>
-        <h1 className="brand">UtmZ</h1>
-        <p className="muted">Crie sua conta grátis</p>
+    <AuthLayout>
+      <div className="mb-8">
+        <span className="text-2xl font-extrabold tracking-tight text-foreground">
+          Utm<span className="text-primary">Z</span>
+        </span>
+        <h1 className="mt-6 text-xl font-bold text-foreground">Criar conta</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Seu workspace fica pronto na hora. Grátis.
+        </p>
+      </div>
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <label>
           Seu nome (ou da empresa)
           <input
@@ -57,7 +66,7 @@ export default function Signup() {
         </label>
         <label>
           E-mail
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         </label>
         <label>
           Senha (mínimo 8 caracteres)
@@ -71,13 +80,13 @@ export default function Signup() {
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button className="btn btn-primary" disabled={loading}>
+        <button className="btn btn-primary w-full" disabled={loading}>
           {loading ? 'Criando…' : 'Criar conta'}
         </button>
-        <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+        <p className="text-center text-sm text-muted-foreground">
           Já tem conta? <Link to="/login">Entrar</Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   )
 }

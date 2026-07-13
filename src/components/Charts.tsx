@@ -91,8 +91,8 @@ export function HourHeatmap({ grid }: { grid: number[][] }) {
               title={`${DAY_LABEL[day]} ${hour}h: ${count} ${count === 1 ? 'sessão' : 'sessões'}`}
               style={{
                 background: count > 0 && max > 0
-                  ? `rgba(79, 140, 255, ${0.15 + (count / max) * 0.85})`
-                  : 'var(--surface-2)',
+                  ? `color-mix(in srgb, var(--primary) ${Math.round(15 + (count / max) * 85)}%, transparent)`
+                  : 'var(--secondary)',
               }}
             />
           ))}
