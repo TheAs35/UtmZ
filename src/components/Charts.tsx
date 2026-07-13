@@ -68,6 +68,40 @@ export function TimelineChart({ data }: { data: DayPoint[] }) {
   )
 }
 
+const DAY_LABEL = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+/** Grade dia × hora c/ intensidade sequencial (matiz única, magnitude). */
+export function HourHeatmap({ grid }: { grid: number[][] }) {
+  const max = grid.reduce((m, row) => Math.max(m, ...row), 0)
+  return (
+    <div className="hour-heatmap">
+      <div className="hh-row hh-head">
+        <span className="hh-day" />
+        {Array.from({ length: 24 }, (_, h) => (
+          <span key={h} className="hh-hour">{h % 3 === 0 ? h : ''}</span>
+        ))}
+      </div>
+      {grid.map((row, day) => (
+        <div className="hh-row" key={day}>
+          <span className="hh-day">{DAY_LABEL[day]}</span>
+          {row.map((count, hour) => (
+            <span
+              key={hour}
+              className="hh-cell"
+              title={`${DAY_LABEL[day]} ${hour}h: ${count} ${count === 1 ? 'sessão' : 'sessões'}`}
+              style={{
+                background: count > 0 && max > 0
+                  ? `rgba(79, 140, 255, ${0.15 + (count / max) * 0.85})`
+                  : 'var(--surface-2)',
+              }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function BreakdownCard({ title, rows }: { title: string; rows: BreakdownRow[] }) {
   const max = rows.reduce((m, r) => Math.max(m, r.count), 0)
   return (

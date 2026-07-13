@@ -96,10 +96,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const acceptLanguage = String(req.headers['accept-language'] ?? '')
   const language = acceptLanguage ? acceptLanguage.split(',')[0].split(';')[0].trim() || null : null
 
+  // Liga o clique do link curto à sessão do GoTag no site de destino:
+  // o script captura uzclid e o funil anúncio→link→sessão→lead fecha.
+  const trackId = crypto.randomUUID()
+  destination.searchParams.set('uzclid', trackId)
+
   // Registra o clique em segundo plano — não atrasa o redirect.
   waitUntil(
     Promise.resolve(
       supabase.from('clicks').insert({
+        track_id: trackId,
         link_id: link.id,
         workspace_id: link.workspace_id,
         country: (req.headers['x-vercel-ip-country'] as string) || null,

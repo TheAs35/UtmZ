@@ -9,6 +9,8 @@ import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import ClientDetail from './pages/ClientDetail'
 import NewLink from './pages/NewLink'
+import Sites from './pages/Sites'
+import SiteDashboard from './pages/SiteDashboard'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -85,6 +87,8 @@ export default function App() {
           <Link to="/" className="brand">UtmZ</Link>
           <nav>
             <span className="muted">{workspace.name}</span>
+            <Link to="/">Links</Link>
+            <Link to="/sites">Sites</Link>
             <Link to="/novo-link" className="btn btn-primary">+ Novo link</Link>
             <button onClick={handleLogout} className="btn btn-ghost">Sair</button>
           </nav>
@@ -94,6 +98,8 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/cliente/:id" element={<ClientDetail />} />
             <Route path="/novo-link" element={<NewLink />} />
+            <Route path="/sites" element={<Sites />} />
+            <Route path="/site/:id" element={<SiteDashboard />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/cadastro" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
